@@ -1,0 +1,9 @@
+[Unit]
+Description=Bitvavo trendbot elke dag 08:20 (na dagsluiting UTC)
+
+[Timer]
+OnCalendar=*-*-* 08:20 Europe/Amsterdam
+Persistent=true
+
+[Install]
+WantedBy=timers.target
