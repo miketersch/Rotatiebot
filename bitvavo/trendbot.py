@@ -14,7 +14,13 @@ Veiligheid:
 Omgevingsvariabelen (in /etc/rotatiebot/env): BITVAVO_KEY, BITVAVO_SECRET, BITVAVO_BUDGET_EUR, BITVAVO_MODUS (droog/echt),
 BITVAVO_SMA (dagen, standaard 100), BITVAVO_DREMPEL (fractie, standaard 0.10)
 """
-import os, sys, json, time, hmac, hashlib, urllib.request, urllib.parse, datetime as dt, math
+import os, sys, json, time, hmac, hashlib, urllib.request, urllib.parse, urllib.error, datetime as dt, math, socket
+
+# Bitvavo altijd via IPv4 benaderen (IP-whitelist bevat alleen het IPv4-adres van de server)
+_orig_getaddrinfo = socket.getaddrinfo
+def _ipv4_only(host, port, family=0, *a, **k):
+    return _orig_getaddrinfo(host, port, socket.AF_INET, *a, **k)
+socket.getaddrinfo = _ipv4_only
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from melding import meld
 
@@ -37,8 +43,11 @@ def api(method, path, body=None):
     req = urllib.request.Request(BASE + path, data=payload.encode() if body else None, method=method, headers={
         "Bitvavo-Access-Key": KEY, "Bitvavo-Access-Signature": sig, "Bitvavo-Access-Timestamp": ts,
         "Bitvavo-Access-Window": "10000", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Bitvavo {e.code} op {path}: {e.read().decode(errors='replace')[:300]}")
 
 
 def publiek(path):
