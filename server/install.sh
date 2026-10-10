@@ -2,6 +2,7 @@
 # Eenmalige installatie van de rotatiebot op een verse Ubuntu 24.04 server (Hetzner).
 # Uitvoeren als root:  bash install.sh
 set -euo pipefail
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd /
 
 BOT_USER=rotatiebot
@@ -18,7 +19,7 @@ timedatectl set-timezone Europe/Amsterdam
 echo ">>> Gebruiker en mappen"
 id -u $BOT_USER >/dev/null 2>&1 || useradd --system --create-home --home-dir /home/$BOT_USER --shell /bin/bash $BOT_USER
 mkdir -p $BOT_HOME /etc/rotatiebot
-cp -r "$(dirname "$0")/.." $BOT_HOME/app
+rm -rf $BOT_HOME/app && cp -r "$REPO_DIR" $BOT_HOME/app
 chown -R $BOT_USER:$BOT_USER $BOT_HOME
 
 echo ">>> Python-omgeving"
