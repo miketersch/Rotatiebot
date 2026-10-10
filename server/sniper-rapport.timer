@@ -1,0 +1,9 @@
+[Unit]
+Description=Sniper dagrapport om 08:10
+
+[Timer]
+OnCalendar=*-*-* 08:10 Europe/Amsterdam
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=Sniper observatiebot (pump.fun, fase 1, geen geld)
+After=network-online.target
+
+[Service]
+Type=simple
+User=rotatiebot
+WorkingDirectory=/opt/rotatiebot/app
+EnvironmentFile=/etc/rotatiebot/env
+ExecStart=/opt/rotatiebot/venv/bin/python /opt/rotatiebot/app/sniper/observer.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

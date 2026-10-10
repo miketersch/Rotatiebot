@@ -1,0 +1,9 @@
+[Unit]
+Description=Sniper dagrapport
+
+[Service]
+Type=oneshot
+User=rotatiebot
+WorkingDirectory=/opt/rotatiebot/app
+EnvironmentFile=/etc/rotatiebot/env
+ExecStart=/opt/rotatiebot/venv/bin/python /opt/rotatiebot/app/sniper/rapport.py 24

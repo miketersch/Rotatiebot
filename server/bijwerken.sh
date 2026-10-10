@@ -5,6 +5,9 @@ cd /root/rotatiebot && git pull
 rm -rf /opt/rotatiebot/app && cp -r /root/rotatiebot /opt/rotatiebot/app
 chown -R rotatiebot:rotatiebot /opt/rotatiebot/app
 chmod +x /opt/rotatiebot/app/server/*.sh
-cp /opt/rotatiebot/app/server/rotatiebot.service /opt/rotatiebot/app/server/rotatiebot.timer /opt/rotatiebot/app/server/ibgateway.service /etc/systemd/system/
+cp /opt/rotatiebot/app/server/*.service /opt/rotatiebot/app/server/*.timer /etc/systemd/system/
+/opt/rotatiebot/venv/bin/pip install -q websockets base58
+mkdir -p /opt/rotatiebot/app/output && chown -R rotatiebot:rotatiebot /opt/rotatiebot/app/output
 systemctl daemon-reload
+systemctl is-active --quiet sniper-observer && systemctl restart sniper-observer || true
 echo "Bijgewerkt naar $(git -C /root/rotatiebot log --oneline | head -1)"
