@@ -2,6 +2,7 @@
 # Eenmalige installatie van de rotatiebot op een verse Ubuntu 24.04 server (Hetzner).
 # Uitvoeren als root:  bash install.sh
 set -euo pipefail
+cd /
 
 BOT_USER=rotatiebot
 BOT_HOME=/opt/rotatiebot
@@ -27,16 +28,19 @@ sudo -u $BOT_USER $BOT_HOME/venv/bin/pip install -q pandas numpy yfinance ib_asy
 
 echo ">>> IB Gateway"
 if [ ! -d /home/$BOT_USER/Jts/ibgateway ]; then
-  curl -sSL "$GATEWAY_URL" -o /tmp/ibgateway.sh
-  chmod +x /tmp/ibgateway.sh
-  sudo -u $BOT_USER HOME=/home/$BOT_USER /tmp/ibgateway.sh -q
-  rm -f /tmp/ibgateway.sh
+  mkdir -p /var/tmp/ibinstall && chown $BOT_USER:$BOT_USER /var/tmp/ibinstall
+  curl -sSL "$GATEWAY_URL" -o /var/tmp/ibinstall/ibgateway.sh
+  chmod +x /var/tmp/ibinstall/ibgateway.sh
+  cd /var/tmp/ibinstall
+  sudo -u $BOT_USER HOME=/home/$BOT_USER INSTALL4J_TEMP=/var/tmp/ibinstall ./ibgateway.sh -q
+  cd /
+  rm -rf /var/tmp/ibinstall
 fi
 
 echo ">>> IBC (automatisch inloggen)"
 if [ ! -d /opt/ibc ]; then
-  curl -sSL "https://github.com/IbcAlpha/IBC/releases/download/${IBC_VERSION}/IBCLinux-${IBC_VERSION}.zip" -o /tmp/ibc.zip
-  mkdir -p /opt/ibc && unzip -q -o /tmp/ibc.zip -d /opt/ibc && rm /tmp/ibc.zip
+  curl -sSL "https://github.com/IbcAlpha/IBC/releases/download/${IBC_VERSION}/IBCLinux-${IBC_VERSION}.zip" -o /var/tmp/ibc.zip
+  mkdir -p /opt/ibc && unzip -q -o /var/tmp/ibc.zip -d /opt/ibc && rm /var/tmp/ibc.zip
   chmod +x /opt/ibc/*.sh /opt/ibc/scripts/*.sh
 fi
 GW_VERSION=$(ls /home/$BOT_USER/Jts/ibgateway/ | grep -E '^[0-9]+$' | sort -n | tail -1)
