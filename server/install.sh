@@ -40,7 +40,7 @@ if [ ! -d /home/$BOT_USER/Jts/ibgateway ] && [ ! -d $GW_HOME/jars ]; then
 fi
 # IBC verwacht de indeling ~/Jts/ibgateway/<versienummer>/
 if [ -d $GW_HOME/jars ]; then
-  GW_VERSION=$(ls $GW_HOME/jars | grep -oE 'jts4launch-[0-9]+' | grep -oE '[0-9]+' | head -1)
+  GW_VERSION=$(ls $GW_HOME/jars | grep -oE 'jts4launch-[0-9]+' | head -1 | sed 's/jts4launch-//')
   [ -n "$GW_VERSION" ] || GW_VERSION=$(grep -oE 'version=[0-9]+' $GW_HOME/.install4j/i4jparams.conf 2>/dev/null | head -1 | cut -d= -f2)
   [ -n "$GW_VERSION" ] || { echo "Kan gateway-versie niet bepalen"; ls $GW_HOME/jars | head; exit 1; }
   mkdir -p /home/$BOT_USER/Jts/ibgateway
@@ -48,6 +48,15 @@ if [ -d $GW_HOME/jars ]; then
   mv $GW_HOME /home/$BOT_USER/Jts/ibgateway/$GW_VERSION
   chown -R $BOT_USER:$BOT_USER /home/$BOT_USER/Jts
 fi
+# herstel: map hernoemen als de naam niet klopt met de jar-versie
+for d in /home/$BOT_USER/Jts/ibgateway/*/; do
+  [ -d "$d/jars" ] || continue
+  echt=$(ls "$d/jars" | grep -oE 'jts4launch-[0-9]+' | head -1 | sed 's/jts4launch-//')
+  naam=$(basename "$d")
+  if [ -n "$echt" ] && [ "$echt" != "$naam" ]; then
+    rm -rf "/home/$BOT_USER/Jts/ibgateway/$echt"; mv "$d" "/home/$BOT_USER/Jts/ibgateway/$echt"
+  fi
+done
 GW_VERSION=$(ls /home/$BOT_USER/Jts/ibgateway/ | grep -E '^[0-9]+$' | sort -n | tail -1)
 [ -n "$GW_VERSION" ] || { echo "IB Gateway niet gevonden onder /home/$BOT_USER/Jts/ibgateway"; exit 1; }
 echo "Gateway versie: $GW_VERSION"
