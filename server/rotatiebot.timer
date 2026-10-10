@@ -1,0 +1,10 @@
+[Unit]
+Description=Rotatiebot: elke werkdag 09:40 (Amsterdam) controleren of het herbalanceerdag is
+
+[Timer]
+OnCalendar=Mon..Fri 09:40 Europe/Amsterdam
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

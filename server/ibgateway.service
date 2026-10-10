@@ -1,0 +1,15 @@
+[Unit]
+Description=IB Gateway (headless, via IBC)
+After=network-online.target
+
+[Service]
+Type=simple
+User=rotatiebot
+Environment=HOME=/home/rotatiebot
+ExecStart=/opt/ibc/start-gateway.sh
+Restart=no
+KillMode=control-group
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

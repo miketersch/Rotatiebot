@@ -1,0 +1,11 @@
+[Unit]
+Description=Rotatiebot maandelijkse herbalancering
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=rotatiebot
+WorkingDirectory=/opt/rotatiebot/app
+EnvironmentFile=/etc/rotatiebot/env
+ExecStart=/opt/rotatiebot/venv/bin/python /opt/rotatiebot/app/run_maandelijks.py
+TimeoutStartSec=3600
