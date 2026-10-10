@@ -28,15 +28,29 @@ sudo -u $BOT_USER $BOT_HOME/venv/bin/pip install -q --upgrade pip
 sudo -u $BOT_USER $BOT_HOME/venv/bin/pip install -q pandas numpy yfinance ib_async matplotlib
 
 echo ">>> IB Gateway"
-if [ ! -d /home/$BOT_USER/Jts/ibgateway ]; then
+GW_HOME=/home/$BOT_USER/ibgateway
+if [ ! -d /home/$BOT_USER/Jts/ibgateway ] && [ ! -d $GW_HOME/jars ]; then
   mkdir -p /var/tmp/ibinstall && chown $BOT_USER:$BOT_USER /var/tmp/ibinstall
   curl -sSL "$GATEWAY_URL" -o /var/tmp/ibinstall/ibgateway.sh
   chmod +x /var/tmp/ibinstall/ibgateway.sh
   cd /var/tmp/ibinstall
-  sudo -u $BOT_USER HOME=/home/$BOT_USER INSTALL4J_TEMP=/var/tmp/ibinstall ./ibgateway.sh -q
+  sudo -u $BOT_USER HOME=/home/$BOT_USER INSTALL4J_TEMP=/var/tmp/ibinstall ./ibgateway.sh -q -dir $GW_HOME
   cd /
   rm -rf /var/tmp/ibinstall
 fi
+# IBC verwacht de indeling ~/Jts/ibgateway/<versienummer>/
+if [ -d $GW_HOME/jars ]; then
+  GW_VERSION=$(ls $GW_HOME/jars | grep -oE 'jts4launch-[0-9]+' | grep -oE '[0-9]+' | head -1)
+  [ -n "$GW_VERSION" ] || GW_VERSION=$(grep -oE 'version=[0-9]+' $GW_HOME/.install4j/i4jparams.conf 2>/dev/null | head -1 | cut -d= -f2)
+  [ -n "$GW_VERSION" ] || { echo "Kan gateway-versie niet bepalen"; ls $GW_HOME/jars | head; exit 1; }
+  mkdir -p /home/$BOT_USER/Jts/ibgateway
+  rm -rf /home/$BOT_USER/Jts/ibgateway/$GW_VERSION
+  mv $GW_HOME /home/$BOT_USER/Jts/ibgateway/$GW_VERSION
+  chown -R $BOT_USER:$BOT_USER /home/$BOT_USER/Jts
+fi
+GW_VERSION=$(ls /home/$BOT_USER/Jts/ibgateway/ | grep -E '^[0-9]+$' | sort -n | tail -1)
+[ -n "$GW_VERSION" ] || { echo "IB Gateway niet gevonden onder /home/$BOT_USER/Jts/ibgateway"; exit 1; }
+echo "Gateway versie: $GW_VERSION"
 
 echo ">>> IBC (automatisch inloggen)"
 if [ ! -d /opt/ibc ]; then
@@ -44,10 +58,6 @@ if [ ! -d /opt/ibc ]; then
   mkdir -p /opt/ibc && unzip -q -o /var/tmp/ibc.zip -d /opt/ibc && rm /var/tmp/ibc.zip
   chmod +x /opt/ibc/*.sh /opt/ibc/scripts/*.sh
 fi
-GW_VERSION=$(ls /home/$BOT_USER/Jts/ibgateway/ | grep -E '^[0-9]+$' | sort -n | tail -1)
-[ -n "$GW_VERSION" ] || { echo "IB Gateway niet gevonden onder /home/$BOT_USER/Jts/ibgateway"; exit 1; }
-echo "Gateway versie: $GW_VERSION"
-
 echo ">>> Configuratie"
 [ -f /etc/rotatiebot/env ] || cp $BOT_HOME/app/server/env.example /etc/rotatiebot/env
 [ -f /etc/rotatiebot/ibc-config.ini ] || cp $BOT_HOME/app/server/ibc-config.ini /etc/rotatiebot/ibc-config.ini
