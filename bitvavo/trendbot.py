@@ -113,7 +113,7 @@ def main():
         if not ECHT:
             regels.append(f"   DROOGLOOP: zou {side} {c} {'voor ' + str(hoeveel) + ' EUR' if side == 'buy' else str(hoeveel) + ' stuks'}")
             continue
-        body = {"market": f"{c}-EUR", "side": side, "orderType": "market"}
+        body = {"market": f"{c}-EUR", "side": side, "orderType": "market", "operatorId": int(os.environ.get("BITVAVO_OPERATOR_ID", "1001"))}
         if side == "buy":
             body["amountQuote"] = f"{hoeveel:.2f}"
         else:
