@@ -2,10 +2,14 @@
 # Haalt de nieuwste versie van GitHub en zet hem in /opt/rotatiebot/app (instellingen blijven staan).
 set -e
 cd /root/rotatiebot && git pull
+# output/ (boekhouding van de bots: state.json, bitvavo_state.json, sniper.db, logs) blijft staan
+[ -d /opt/rotatiebot/app/output ] && mv /opt/rotatiebot/app/output /opt/rotatiebot/output_bewaar
 rm -rf /opt/rotatiebot/app && cp -r /root/rotatiebot /opt/rotatiebot/app
+[ -d /opt/rotatiebot/output_bewaar ] && rm -rf /opt/rotatiebot/app/output && mv /opt/rotatiebot/output_bewaar /opt/rotatiebot/app/output
 chown -R rotatiebot:rotatiebot /opt/rotatiebot/app
 chmod +x /opt/rotatiebot/app/server/*.sh
 cp /opt/rotatiebot/app/server/*.service /opt/rotatiebot/app/server/*.timer /etc/systemd/system/
+systemctl daemon-reload
 /opt/rotatiebot/venv/bin/pip install -q websockets base58
 mkdir -p /opt/rotatiebot/app/output && chown -R rotatiebot:rotatiebot /opt/rotatiebot/app/output
 bash /opt/rotatiebot/app/server/sudoers_fix.sh >/dev/null
