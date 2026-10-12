@@ -20,4 +20,4 @@ UCITS = {
 }
 
 # beurzen in volgorde van voorkeur voor EUR-noteringen bij IBKR
-BEURS_VOORKEUR = ["IBIS", "IBIS2", "AEB", "SBF", "BVME.ETF", "LSEETF", "SMART"]
+BEURS_VOORKEUR = ["AEB", "IBIS", "IBIS2", "SBF", "BVME.ETF", "LSEETF", "SMART"]   # Amsterdam eerst (NL-handelsvergunning zeker aanwezig)

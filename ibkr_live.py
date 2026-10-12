@@ -103,22 +103,41 @@ def koers_yahoo(sig: str):
 
 
 def contract_en_koers(ib: IB, sig: str):
-    """Kies de notering waarvoor IBKR een koers geeft; anders de voorkeursnotering met een Yahoo-koers."""
+    """Kies de voorkeursnotering (beursvolgorde) voor de order, gerouteerd via SMART; koers van welke
+    notering dan ook via IBKR, anders Yahoo."""
     info = UCITS[sig]
     cs = kandidaten_voor(ib, info["isin"], info["valuta"])
-    for c in cs:
+    keus = cs[0]
+    try:
+        ib.qualifyContracts(keus)
+    except Exception as e:
+        print(f"  kwalificeren {keus.symbol}@{keus.exchange} mislukt: {e}")
+    # order via SMART (vermijdt de 'direct routing'-voorzorgsmelding van de gateway), met de gekozen beurs als primaire
+    if keus.exchange != "SMART":
+        smart = Contract(conId=keus.conId, secType="STK", symbol=keus.symbol, currency=keus.currency,
+                         exchange="SMART", primaryExchange=keus.primaryExchange or keus.exchange)
         try:
-            ib.qualifyContracts(c)
+            ib.qualifyContracts(smart)
+            if smart.conId == keus.conId:
+                keus = smart
+        except Exception as e:
+            print(f"  SMART-routering voor {keus.symbol} niet mogelijk ({e}), direct naar {keus.exchange}")
+    p = None
+    for c in [keus] + cs:
+        try:
+            if c is not keus:
+                ib.qualifyContracts(c)
         except Exception:
             continue
         p = koers_ibkr(ib, c)
         if p:
-            print(f"  koers {sig} via IBKR {c.symbol}@{c.exchange}: {p}")
-            return c, p
-    p = koers_yahoo(sig)
-    if p:
-        return cs[0], p
-    raise RuntimeError(f"Geen koers voor {sig} ({info['ticker']}, ISIN {info['isin']}); geprobeerd: " + ", ".join(f"{c.symbol}@{c.exchange}" for c in cs))
+            print(f"  koers {sig} via IBKR {c.symbol}@{c.exchange}: {p}"); break
+    if not p:
+        p = koers_yahoo(sig)
+    if not p:
+        raise RuntimeError(f"Geen koers voor {sig} ({info['ticker']}, ISIN {info['isin']}); geprobeerd: " + ", ".join(f"{c.symbol}@{c.exchange}" for c in cs))
+    print(f"  order-contract {sig}: {keus.symbol}@{keus.exchange} (primair {keus.primaryExchange}, conId {keus.conId})")
+    return keus, p
 
 
 def main():
@@ -193,6 +212,8 @@ def main():
             if st.status not in ("Filled", "Submitted", "PreSubmitted"):
                 fouten = [e.message for e in trade.log if e.message] or [str(e) for e in fouten_ib[-3:]]
                 regel += "\n   reden: " + " | ".join(fouten)[:400]
+                if any("460" in f or "No trading permissions" in f for f in fouten):
+                    regel += f"\n   -> handelsvergunning ontbreekt voor beurs {c.primaryExchange or c.exchange}: in IBKR Client Portal onder Settings > Trading Permissions de Europese landen toevoegen"
             resultaten.append(regel)
         tekst += "\n\nUitvoering:\n" + "\n".join(resultaten)
     elif not orders:
