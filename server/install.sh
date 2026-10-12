@@ -7,7 +7,7 @@ cd /
 
 BOT_USER=rotatiebot
 BOT_HOME=/opt/rotatiebot
-IBC_VERSION=3.20.0
+IBC_VERSION=3.24.2
 GATEWAY_URL="https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh"
 
 echo ">>> Pakketten"
