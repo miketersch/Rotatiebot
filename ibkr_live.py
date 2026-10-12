@@ -63,17 +63,27 @@ def zoek_contract(ib: IB, isin: str, valuta: str) -> Contract:
 
 
 def laatste_koers(ib: IB, c: Contract) -> float:
-    t = ib.reqMktData(c, "", snapshot=True)
-    ib.sleep(2.5)
-    p = t.last if t.last and t.last > 0 else (t.close if t.close and t.close > 0 else None)
-    if p is None and t.bid and t.ask:
+    """Slotkoers van de laatste handelsdag via historische data (gratis, ook zonder marktdata-abonnement).
+    Valt terug op uitgestelde live koersen."""
+    for wat in ("TRADES", "MIDPOINT"):
+        try:
+            bars = ib.reqHistoricalData(c, "", "5 D", "1 day", wat, useRTH=True, formatDate=1)
+            if bars and bars[-1].close and bars[-1].close > 0:
+                return float(bars[-1].close)
+        except Exception as e:
+            print(f"historische data {wat} mislukt voor {c.symbol}: {e}")
+    ib.reqMarketDataType(3)   # 3 = uitgesteld (gratis)
+    t = ib.reqMktData(c, "", snapshot=False)
+    ib.sleep(4)
+    p = None
+    for kandidaat in (t.last, t.close, t.marketPrice()):
+        if kandidaat and kandidaat > 0 and not math.isnan(kandidaat):
+            p = kandidaat; break
+    if p is None and t.bid and t.ask and t.bid > 0:
         p = (t.bid + t.ask) / 2
     ib.cancelMktData(c)
-    if p is None or math.isnan(p):
-        bars = ib.reqHistoricalData(c, "", "2 D", "1 day", "TRADES", useRTH=True)
-        p = bars[-1].close if bars else None
     if not p:
-        raise RuntimeError(f"Geen koers voor {c.symbol} ({c.secId})")
+        raise RuntimeError(f"Geen koers voor {c.symbol} ({c.secId}) op {c.exchange}")
     return float(p)
 
 
