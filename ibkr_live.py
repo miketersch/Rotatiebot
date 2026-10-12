@@ -124,6 +124,8 @@ def contract_en_koers(ib: IB, sig: str):
 def main():
     dag, gew, score, boven_sma = signalen()
     ib = IB()
+    fouten_ib = []
+    ib.errorEvent += lambda reqId, code, msg, *a: fouten_ib.append(f"{code}: {msg}")
     ib.connect(HOST, PORT, clientId=CLIENT_ID, timeout=60)
     acct = ib.managedAccounts()[0]
     paper = acct.startswith("DU")
@@ -187,7 +189,11 @@ def main():
                 if trade.isDone():
                     break
             st = trade.orderStatus
-            resultaten.append(f"{sig}: {order.action} {abs(delta)} -> {st.status}, gevuld {st.filled:.0f} @ {st.avgFillPrice:.2f}")
+            regel = f"{sig}: {order.action} {abs(delta)} {c.symbol}@{c.exchange} -> {st.status}, gevuld {st.filled:.0f} @ {st.avgFillPrice:.2f}"
+            if st.status not in ("Filled", "Submitted", "PreSubmitted"):
+                fouten = [e.message for e in trade.log if e.message] or [str(e) for e in fouten_ib[-3:]]
+                regel += "\n   reden: " + " | ".join(fouten)[:400]
+            resultaten.append(regel)
         tekst += "\n\nUitvoering:\n" + "\n".join(resultaten)
     elif not orders:
         tekst += "\n\nGeen orders nodig."
