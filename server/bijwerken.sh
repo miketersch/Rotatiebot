@@ -8,6 +8,7 @@ chmod +x /opt/rotatiebot/app/server/*.sh
 cp /opt/rotatiebot/app/server/*.service /opt/rotatiebot/app/server/*.timer /etc/systemd/system/
 /opt/rotatiebot/venv/bin/pip install -q websockets base58
 mkdir -p /opt/rotatiebot/app/output && chown -R rotatiebot:rotatiebot /opt/rotatiebot/app/output
+echo "rotatiebot ALL=(root) NOPASSWD: /usr/bin/systemctl start ibgateway, /usr/bin/systemctl stop ibgateway, /usr/bin/systemctl start sniper-observer, /usr/bin/systemctl stop sniper-observer" > /etc/sudoers.d/rotatiebot && chmod 440 /etc/sudoers.d/rotatiebot
 systemctl daemon-reload
 systemctl is-active --quiet sniper-observer && systemctl restart sniper-observer || true
 echo "Bijgewerkt naar $(git -C /root/rotatiebot log --oneline | head -1)"

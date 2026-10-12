@@ -17,8 +17,9 @@ API_KEY = os.environ.get("HELIUS_API_KEY")
 WSS = os.environ.get("SOLANA_WSS") or (f"wss://mainnet.helius-rpc.com/?api-key={API_KEY}" if API_KEY else None)
 HIER = os.path.dirname(os.path.abspath(__file__))
 DB = os.environ.get("SNIPER_DB", os.path.join(HIER, "..", "output", "sniper.db"))
-VOLG_SECONDEN = int(os.environ.get("SNIPER_VOLG_SEC", "14400"))     # trades per token bijhouden gedurende 4 uur
-MAX_TRADES_PER_TOKEN = int(os.environ.get("SNIPER_MAX_TRADES", "3000"))
+VOLG_SECONDEN = int(os.environ.get("SNIPER_VOLG_SEC", "3600"))      # trades per token bijhouden gedurende 1 uur
+MAX_TRADES_PER_TOKEN = int(os.environ.get("SNIPER_MAX_TRADES", "800"))
+MAX_VOLGEN = int(os.environ.get("SNIPER_MAX_VOLGEN", "4000"))     # maximaal aantal tokens tegelijk volgen
 
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 D_CREATE = bytes([27, 114, 169, 77, 222, 235, 99, 118])
@@ -142,13 +143,15 @@ class Observer:
                     self.con.execute("INSERT OR IGNORE INTO tokens VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
                         (c["mint"], c["naam"][:64], c["symbool"][:16], c["uri"][:200], c["maker"], c["user"], nu, sig, c["token_standard"],
                          c["mayhem"], c["cashback"], c["v_sol0"], c["v_tok0"], prijs(c["v_sol0"], c["v_tok0"])))
+                    if len(self.volgen) >= MAX_VOLGEN:
+                        oudste = min(self.volgen, key=lambda m: self.volgen[m][0]); self.volgen.pop(oudste)
                     self.volgen[c["mint"]] = (nu, 0); self.n_tokens += 1
                 elif disc == D_COMPLETE:
                     c = parse_complete(d)
                     self.con.execute("INSERT OR IGNORE INTO completes VALUES(?,?,?)", (c["mint"], nu, c["user"]))
             except Exception as e:
                 log.warning("parse-fout %s: %s", disc.hex(), e)
-        if nu - self.laatste_flush > 2:
+        if nu - self.laatste_flush > 1 or len(self.buf_trades) > 2000:
             self.flush(nu)
 
     def flush(self, nu):

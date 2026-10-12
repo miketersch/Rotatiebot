@@ -8,6 +8,7 @@ User=rotatiebot
 WorkingDirectory=/opt/rotatiebot/app
 EnvironmentFile=/etc/rotatiebot/env
 ExecStart=/opt/rotatiebot/venv/bin/python /opt/rotatiebot/app/sniper/observer.py
+MemoryMax=400M
 Restart=always
 RestartSec=10
 

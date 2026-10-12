@@ -7,7 +7,7 @@ from melding import meld
 DB = os.environ.get("SNIPER_DB", os.path.join(HIER, "..", "output", "sniper.db"))
 UREN = float(sys.argv[1]) if len(sys.argv) > 1 else 24.0
 nu = time.time()
-tot = nu - 4 * 3600                      # tokens moeten 4 uur gevolgd zijn
+tot = nu - 1 * 3600                      # tokens moeten 1 uur gevolgd zijn
 van = tot - UREN * 3600
 data = laad(DB, van, tot)
 n = len(data)

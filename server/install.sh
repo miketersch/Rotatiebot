@@ -80,7 +80,7 @@ echo ">>> systemd"
 cp $BOT_HOME/app/server/ibgateway.service /etc/systemd/system/
 cp $BOT_HOME/app/server/rotatiebot.service /etc/systemd/system/
 cp $BOT_HOME/app/server/rotatiebot.timer /etc/systemd/system/
-echo "$BOT_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start ibgateway, /usr/bin/systemctl stop ibgateway" > /etc/sudoers.d/rotatiebot
+echo "$BOT_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start ibgateway, /usr/bin/systemctl stop ibgateway, /usr/bin/systemctl start sniper-observer, /usr/bin/systemctl stop sniper-observer" > /etc/sudoers.d/rotatiebot
 chmod 440 /etc/sudoers.d/rotatiebot
 systemctl daemon-reload
 systemctl enable rotatiebot.timer

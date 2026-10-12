@@ -63,6 +63,7 @@ def main():
             return
 
     meld("Rotatiebot start", f"Herbalancering {vandaag}. Keur de IBKR-inlogmelding op je telefoon goed (binnen {WACHT_LOGIN_SEC//60} min).")
+    subprocess.run(["sudo", "systemctl", "stop", "sniper-observer"], check=False)   # geheugen vrijmaken voor IB Gateway
     subprocess.run(["sudo", "systemctl", "start", "ibgateway"], check=False)
     t0 = time.time()
     while time.time() - t0 < WACHT_LOGIN_SEC:
@@ -72,6 +73,7 @@ def main():
     else:
         meld("Rotatiebot FOUT", "IB Gateway kwam niet online (2FA niet goedgekeurd of inlogprobleem). Morgen nieuwe poging.")
         subprocess.run(["sudo", "systemctl", "stop", "ibgateway"], check=False)
+        subprocess.run(["sudo", "systemctl", "start", "sniper-observer"], check=False)
         sys.exit(1)
     time.sleep(20)  # gateway even laten settelen na login
 
@@ -89,6 +91,7 @@ def main():
         sys.exit(1)
     finally:
         subprocess.run(["sudo", "systemctl", "stop", "ibgateway"], check=False)
+        subprocess.run(["sudo", "systemctl", "start", "sniper-observer"], check=False)
 
 
 if __name__ == "__main__":
