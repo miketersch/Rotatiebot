@@ -83,9 +83,10 @@ def main():
         if MODUS == "echt" and "--droog" not in sys.argv:
             args.append("--echt")
         subprocess.run(args, check=True, cwd=HIER)
-        st["laatste_maand"] = maand
-        st["laatste_run"] = dt.datetime.now().isoformat(timespec="seconds")
-        bewaar_state(st)
+        if "--droog" not in sys.argv:          # een droogloop telt niet als de maandelijkse run
+            st["laatste_maand"] = maand
+            st["laatste_run"] = dt.datetime.now().isoformat(timespec="seconds")
+            bewaar_state(st)
     except subprocess.CalledProcessError as e:
         meld("Rotatiebot FOUT", f"Stap mislukt: {e.cmd[-1]} (exit {e.returncode}). Morgen nieuwe poging.")
         sys.exit(1)

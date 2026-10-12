@@ -134,7 +134,7 @@ def main():
     nlv = {(v.tag, v.currency): float(v.value) for v in av if v.tag in ("NetLiquidation", "NetLiquidationByCurrency") and v.value not in ("", None)}
     vermogen = nlv.get(("NetLiquidation", "BASE")) or nlv.get(("NetLiquidationByCurrency", "BASE")) or nlv.get(("NetLiquidation", "EUR")) \
         or nlv.get(("NetLiquidationByCurrency", "EUR")) or nlv.get(("NetLiquidation", "USD")) or nlv.get(("NetLiquidationByCurrency", "USD"))
-    basisvaluta = next((v.value for v in av if v.tag == "BaseCurrency"), "?")
+    basisvaluta = next((v.value for v in av if v.tag == "BaseCurrency"), None) or next((cur for (tag, cur), w in nlv.items() if w == vermogen and cur != "BASE"), "EUR")
     if not vermogen:
         beschikbaar = sorted({f"{v.tag}/{v.currency}={v.value}" for v in av if "Liquidation" in v.tag or v.tag in ("TotalCashValue", "AvailableFunds")})
         raise RuntimeError("Kon portefeuillewaarde niet lezen. Gevonden: " + ", ".join(beschikbaar[:12]))
