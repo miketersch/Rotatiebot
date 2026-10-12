@@ -47,44 +47,78 @@ def signalen():
     return dag, gew, score.loc[dag], prijzen.loc[dag] > sma.loc[dag]
 
 
-def zoek_contract(ib: IB, isin: str, valuta: str) -> Contract:
-    c = Contract(secType="STK", secIdType="ISIN", secId=isin)
-    details = ib.reqContractDetails(c)
+def kandidaten_voor(ib: IB, isin: str, valuta: str):
+    """Alle IBKR-noteringen van deze ISIN in de gewenste valuta, in volgorde van beursvoorkeur."""
+    details = ib.reqContractDetails(Contract(secType="STK", secIdType="ISIN", secId=isin))
     if not details:
         raise RuntimeError(f"Geen contract gevonden voor ISIN {isin}")
-    kandidaten = [d.contract for d in details if d.contract.currency == valuta]
-    if not kandidaten:
-        kandidaten = [d.contract for d in details]
+    cs = [d.contract for d in details if d.contract.currency == valuta] or [d.contract for d in details]
     def rang(ct):
         return BEURS_VOORKEUR.index(ct.exchange) if ct.exchange in BEURS_VOORKEUR else 99
-    best = sorted(kandidaten, key=rang)[0]
-    ib.qualifyContracts(best)
-    return best
+    return sorted(cs, key=rang)
 
 
-def laatste_koers(ib: IB, c: Contract) -> float:
-    """Slotkoers van de laatste handelsdag via historische data (gratis, ook zonder marktdata-abonnement).
-    Valt terug op uitgestelde live koersen."""
+def koers_ibkr(ib: IB, c: Contract):
+    """Probeert een koers via IBKR: historische dagdata, dan uitgestelde (gratis) marktdata. None als niets lukt."""
     for wat in ("TRADES", "MIDPOINT"):
         try:
             bars = ib.reqHistoricalData(c, "", "5 D", "1 day", wat, useRTH=True, formatDate=1)
             if bars and bars[-1].close and bars[-1].close > 0:
                 return float(bars[-1].close)
         except Exception as e:
-            print(f"historische data {wat} mislukt voor {c.symbol}: {e}")
-    ib.reqMarketDataType(3)   # 3 = uitgesteld (gratis)
-    t = ib.reqMktData(c, "", snapshot=False)
-    ib.sleep(4)
-    p = None
-    for kandidaat in (t.last, t.close, t.marketPrice()):
-        if kandidaat and kandidaat > 0 and not math.isnan(kandidaat):
-            p = kandidaat; break
-    if p is None and t.bid and t.ask and t.bid > 0:
-        p = (t.bid + t.ask) / 2
-    ib.cancelMktData(c)
-    if not p:
-        raise RuntimeError(f"Geen koers voor {c.symbol} ({c.secId}) op {c.exchange}")
-    return float(p)
+            print(f"  historisch {wat} {c.symbol}@{c.exchange}: {e}")
+    try:
+        ib.reqMarketDataType(4)   # 4 = uitgesteld, bevroren indien nodig (gratis)
+        t = ib.reqMktData(c, "", snapshot=False)
+        ib.sleep(6)
+        p = None
+        for k in (t.last, t.close, t.marketPrice()):
+            if k and k > 0 and not math.isnan(k):
+                p = k; break
+        if p is None and t.bid and t.ask and t.bid > 0 and not math.isnan(t.bid):
+            p = (t.bid + t.ask) / 2
+        ib.cancelMktData(c)
+        if p:
+            return float(p)
+    except Exception as e:
+        print(f"  uitgesteld {c.symbol}@{c.exchange}: {e}")
+    return None
+
+
+def koers_yahoo(sig: str):
+    """Reserve: slotkoers in EUR via Yahoo Finance (Europese notering)."""
+    try:
+        import yfinance as yf
+    except ImportError:
+        return None
+    for tk in UCITS[sig].get("yahoo", []):
+        try:
+            h = yf.Ticker(tk).history(period="5d")
+            if len(h) and h["Close"].iloc[-1] > 0:
+                print(f"  koers {sig} via Yahoo {tk}")
+                return float(h["Close"].iloc[-1])
+        except Exception as e:
+            print(f"  yahoo {tk}: {e}")
+    return None
+
+
+def contract_en_koers(ib: IB, sig: str):
+    """Kies de notering waarvoor IBKR een koers geeft; anders de voorkeursnotering met een Yahoo-koers."""
+    info = UCITS[sig]
+    cs = kandidaten_voor(ib, info["isin"], info["valuta"])
+    for c in cs:
+        try:
+            ib.qualifyContracts(c)
+        except Exception:
+            continue
+        p = koers_ibkr(ib, c)
+        if p:
+            print(f"  koers {sig} via IBKR {c.symbol}@{c.exchange}: {p}")
+            return c, p
+    p = koers_yahoo(sig)
+    if p:
+        return cs[0], p
+    raise RuntimeError(f"Geen koers voor {sig} ({info['ticker']}, ISIN {info['isin']}); geprobeerd: " + ", ".join(f"{c.symbol}@{c.exchange}" for c in cs))
 
 
 def main():
@@ -113,10 +147,8 @@ def main():
 
     # contracten + koersen voor alle assets in het universum
     contracten, koersen = {}, {}
-    for sig, info in UCITS.items():
-        c = zoek_contract(ib, info["isin"], info["valuta"])
-        contracten[sig] = c
-        koersen[sig] = laatste_koers(ib, c)
+    for sig in UCITS:
+        contracten[sig], koersen[sig] = contract_en_koers(ib, sig)
 
     # huidige posities (op ISIN herkennen)
     posities = {}
