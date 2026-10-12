@@ -84,11 +84,22 @@ def main():
     acct = ib.managedAccounts()[0]
     paper = acct.startswith("DU")
 
-    # vermogen in EUR
-    nlv = {v.currency: float(v.value) for v in ib.accountValues(acct) if v.tag == "NetLiquidationByCurrency"}
-    vermogen = nlv.get("BASE", nlv.get("EUR"))
+    # vermogen in basisvaluta (paper-account is meestal USD, echt account EUR)
+    ib.sleep(3)
+    av = ib.accountValues(acct)
+    nlv = {(v.tag, v.currency): float(v.value) for v in av if v.tag in ("NetLiquidation", "NetLiquidationByCurrency") and v.value not in ("", None)}
+    vermogen = nlv.get(("NetLiquidation", "BASE")) or nlv.get(("NetLiquidationByCurrency", "BASE")) or nlv.get(("NetLiquidation", "EUR")) \
+        or nlv.get(("NetLiquidationByCurrency", "EUR")) or nlv.get(("NetLiquidation", "USD")) or nlv.get(("NetLiquidationByCurrency", "USD"))
+    basisvaluta = next((v.value for v in av if v.tag == "BaseCurrency"), "?")
     if not vermogen:
-        raise RuntimeError("Kon portefeuillewaarde niet lezen")
+        beschikbaar = sorted({f"{v.tag}/{v.currency}={v.value}" for v in av if "Liquidation" in v.tag or v.tag in ("TotalCashValue", "AvailableFunds")})
+        raise RuntimeError("Kon portefeuillewaarde niet lezen. Gevonden: " + ", ".join(beschikbaar[:12]))
+    # USD-account: omrekenen naar EUR voor de doelbedragen (UCITS-ETF's noteren in EUR)
+    if basisvaluta == "USD":
+        fx = ib.reqMktData(Contract(secType="CASH", symbol="EUR", currency="USD", exchange="IDEALPRO"), "", snapshot=True)
+        ib.sleep(2.5)
+        koers_eurusd = fx.last or fx.close or ((fx.bid + fx.ask) / 2 if fx.bid and fx.ask else None) or 1.08
+        vermogen = vermogen / koers_eurusd
 
     # contracten + koersen voor alle assets in het universum
     contracten, koersen = {}, {}
@@ -117,7 +128,7 @@ def main():
         if delta != 0:
             orders.append((sig, delta))
 
-    kop = f"{'PAPER' if paper else 'ECHT GELD'} | rekening {acct} | vermogen {vermogen:,.0f} EUR | signalen per {dag.date()} | {'DROOGLOOP' if not ECHT else 'ORDERS GEPLAATST'}"
+    kop = f"{'PAPER' if paper else 'ECHT GELD'} | rekening {acct} ({basisvaluta}) | vermogen {vermogen:,.0f} EUR | signalen per {dag.date()} | {'DROOGLOOP' if not ECHT else 'ORDERS GEPLAATST'}"
     tekst = kop + "\n\n" + "\n".join(regels)
     tekst += "\n\nMomentum: " + ", ".join(f"{k} {v:+.1%}{'' if boven_sma[k] else ' (onder SMA)'}" for k, v in score.sort_values(ascending=False).items())
 
