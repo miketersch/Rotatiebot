@@ -83,6 +83,11 @@ def main():
             raise RuntimeError(f"Te weinig candles voor {c}")
         koers = closes[-1]; gem = sum(closes[-SMA - 1:-1]) / SMA     # SMA over de afgesloten dagen
         koersen[c] = (koers, gem)
+    # stofresten (minder dan 1 euro waard, of te klein om te verhandelen) tellen als geen positie
+    for c in COINS:
+        if 0 < state["posities"][c] * koersen[c][0] < 1.0 or 0 < state["posities"][c] < 1e-6:
+            regels.append(f"{c}: restje {state['posities'][c]:.8f} genegeerd (minder dan 1 EUR)")
+            state["posities"][c] = 0.0
     bot_waarde = sum(state["posities"][c] * koersen[c][0] for c in COINS)
     bot_cash = state.get("cash", BUDGET)
     totaal = bot_waarde + bot_cash
@@ -107,7 +112,7 @@ def main():
                 regels.append(f"   te weinig cash voor {c} ({bedrag:.2f})"); continue
             orders.append((c, "buy", round(bedrag, 2)))
         elif actie == "VERKOOP":
-            orders.append((c, "sell", huidig_st))
+            orders.append((c, "sell", math.floor(huidig_st * 1e6) / 1e6))
 
     for c, side, hoeveel in orders:
         if not ECHT:
@@ -125,7 +130,9 @@ def main():
         if side == "buy":
             state["posities"][c] += gevuld; state["cash"] = state.get("cash", BUDGET) - gevuld_eur - (fee if res.get("feeCurrency") == "EUR" else 0)
         else:
-            state["posities"][c] = max(0.0, state["posities"][c] - gevuld); state["cash"] = state.get("cash", BUDGET) + gevuld_eur - fee
+            rest = max(0.0, state["posities"][c] - gevuld)
+            state["posities"][c] = 0.0 if rest * koersen[c][0] < 1.0 else rest
+            state["cash"] = state.get("cash", BUDGET) + gevuld_eur - fee
         regels.append(f"   {side.upper()} {c}: {gevuld:.6f} stuks voor {gevuld_eur:,.2f} EUR (fee {fee:.2f})")
         bewaar_state(state)
 
