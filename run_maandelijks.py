@@ -57,10 +57,8 @@ def main():
             return
         if st.get("laatste_maand") == maand:
             return
-        # draaien op de eerste handelsdag; is die gemist (bot eerder al actief, deze maand nog niet
-        # gedraaid) dan de eerstvolgende werkdag inhalen. Allereerste keer: handmatig met --forceer.
-        if not eerste_handelsdag_vd_maand(vandaag) and st.get("laatste_maand") is None:
-            return
+        # deze maand nog niet gedraaid: vandaag doen (eerste handelsdag, of de eerstvolgende werkdag
+        # waarop het wel lukt, bijvoorbeeld na een gemiste 2FA-goedkeuring)
 
     meld("Rotatiebot start", f"Herbalancering {vandaag}. Keur de IBKR-inlogmelding op je telefoon goed (binnen {WACHT_LOGIN_SEC//60} min).")
     subprocess.run(["sudo", "systemctl", "stop", "sniper-observer"], check=False)   # geheugen vrijmaken voor IB Gateway
